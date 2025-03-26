@@ -65,7 +65,7 @@ model = dict(
     text_encoder=dict(
         use_flash_attn=True,
         transformer_width=4096,
-        llama_path="your_model_path/chinese_alpaca_lora_7b",
+        llama_path="/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
         use_lora=True,
     ),
     temp=1 / 100.0,
@@ -75,10 +75,10 @@ model = dict(
     freeze_text=True,
     open_text_projection=False,
     open_text_lora=False,
-    tokenizer_path="your_model_path/chinese_alpaca_lora_7b",
-    vision_ckpt_path="your_model_path/InternVideo2_Stage2_1B.pth",
+    tokenizer_path="/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
+    vision_ckpt_path="/nfs/data3/shuaicong/InternVideo2/demo_weights/InternVideo2-stage2_1b-224p-f4.pt",
     load_vision_ckpt_from_internvideo2_stage2=True,
-    text_ckpt_path="your_model_path/internvl/internvl_c_13b_224px.pth",
+    text_ckpt_path="/nfs/data3/shuaicong/InternVideo2/demo_weights/internvl_c_13b_224px.pth",
 )
 
 criterion = dict(
