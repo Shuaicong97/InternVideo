@@ -238,11 +238,14 @@ def interpolate_pos_embed_internvideo2(checkpoint_model, model, orig_t_size = 8)
 
 def interpolate_pos_embed_internvideo2_new(checkpoint_model, model, orig_t_size = 8):
     pos_names = []
+    print(f'checkpoint_model.keys(): {checkpoint_model.keys()}')
+
     for k in checkpoint_model.keys():
         if ('pos_embed' in k or 'clip_pos_embed' in k) and 'img_pos_embed' not in k:
             pos_names.append(k)
     
     logger.info(f"pos names list for interpolating: {pos_names}")
+    print(f"pos names list for interpolating: {pos_names}")
 
     assert len(pos_names) > 0, checkpoint_model.keys()
 
