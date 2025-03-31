@@ -54,7 +54,7 @@ class LLaMA(nn.Module):
 
 
 class Tokenizer(nn.Module):
-    def __init__(self, tokenizer_path="your_model_path/chinese_alpaca_lora_7b"):
+    def __init__(self, tokenizer_path="/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b"):
         super(Tokenizer, self).__init__()
         self.tokenizer = LlamaTokenizer.from_pretrained(
             tokenizer_path, 
@@ -63,8 +63,25 @@ class Tokenizer(nn.Module):
         )
         self.tokenizer.pad_token = " "  # allow padding
         self.tokenizer.add_eos_token = True
-    
-    def forward(self, text):
-        text = ["summarize:" + item for item in text]
-        text = self.tokenizer(text, return_tensors="pt", max_length=80, truncation=True, padding="max_length").input_ids
-        return text
+        # print(f'init: {self.tokenizer}')
+        # init: LlamaTokenizer(name_or_path='/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b', vocab_size=49954, model_max_length=1000000000000000019884624838656, is_fast=False, padding_side='right', truncation_side='right', special_tokens={'bos_token': '<s>', 'eos_token': '</s>', 'unk_token': '<unk>', 'pad_token': ' '}, clean_up_tokenization_spaces=False)
+
+    def __call__(self, text, **kwargs):
+        return self.tokenizer(text, **kwargs)
+        
+    # def forward(self, text):
+    #     print(f'forward text before: {text}')
+    #     text = ["summarize:" + item for item in text]
+    #     text = self.tokenizer(text, return_tensors="pt", max_length=80, truncation=True, padding="max_length").input_ids
+    #     print(f'forward text: {text}')
+    #     return text
+    #     # encoding = self.tokenizer.batch_encode_plus(
+    #     #     text,
+    #     #     max_length=80,
+    #     #     truncation=True,
+    #     #     padding="max_length",
+    #     #     return_tensors="pt",
+    #     #     **kwargs
+    #     # )
+    #     # tokenized_texts = [self.tokenizer.convert_ids_to_tokens(ids) for ids in encoding["input_ids"]]
+    #     # return tokenized_texts

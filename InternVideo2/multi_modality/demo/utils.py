@@ -80,7 +80,7 @@ def retrieve_text(frames,
 
 def setup_internvideo2(config: dict):
     if "bert" in config.model.text_encoder.name:
-        tokenizer = BertTokenizer.from_pretrained('/nfs/data3/shuaicong/InternVideo2/demo_weights/bert-large-uncased', local_files_only=True)
+        tokenizer = BertTokenizer.from_pretrained('/root/autodl-tmp/InternVideo/bert-large-uncased', local_files_only=True)
         model = InternVideo2_Stage2(config=config, tokenizer=tokenizer, is_pretrain=True)
     else:
         model = InternVideo2_Stage2(config=config, is_pretrain=True)

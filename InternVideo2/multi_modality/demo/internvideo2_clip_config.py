@@ -67,7 +67,7 @@ model = dict(
     text_encoder=dict(
         use_flash_attn=True,
         transformer_width=4096,
-        llama_path="/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
+        llama_path="/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
         use_lora=True,
     ),
     temp=1 / 100.0,
@@ -77,10 +77,10 @@ model = dict(
     freeze_text=True,
     open_text_projection=False,
     open_text_lora=False,
-    tokenizer_path="/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
-    vision_ckpt_path="/nfs/data3/shuaicong/InternVideo2/demo_weights/InternVideo2-stage2_1b-224p-f4.pt",
+    tokenizer_path="/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
+    vision_ckpt_path="/root/autodl-tmp/InternVideo/hub/models--OpenGVLab--InternVideo2-Stage2_1B-224p-f4/snapshots/4362e1f88a992e7edbfd7696f7f78b7f79426dfd/InternVideo2-stage2_1b-224p-f4.pt",
     load_vision_ckpt_from_internvideo2_stage2=True,
-    text_ckpt_path="/nfs/data3/shuaicong/InternVideo2/demo_weights/internvl_c_13b_224px.pth",
+    text_ckpt_path="/root/autodl-tmp/InternVideo/hub/models--OpenGVLab--InternVL/snapshots/851fb933056db175ce98036baec2dd6826cd2c26/internvl_c_13b_224px.pth",
 )
 
 evaluate = True
@@ -109,7 +109,8 @@ seed = 42
 save_latest = False
 save_iter = 500
 auto_resume = True
-pretrained_path = "/nfs/data3/shuaicong/InternVideo2/demo_weights/1B_clip.pth"  # path to pretrained model weights, for resume only?
+pretrained_path = ""
+# pretrained_path = "/root/autodl-tmp/InternVideo/hub/models--OpenGVLab--InternVideo2-CLIP-1B-224p-f8/snapshots/b8f9edd6cacdbede471fd2fa58439e0b97a6dc1b/1B_clip.pth"  # path to pretrained model weights, for resume only?
 
 deepspeed = dict(
     enable=False,

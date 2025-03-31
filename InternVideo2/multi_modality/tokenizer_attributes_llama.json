@@ -1,0 +1,29 @@
+{
+    "supports": [
+        "Tokenizer padding support: Not Supported",
+        "Tokenizer pad_token support: Not Supported",
+        "Tokenizer truncation support: Not Supported",
+        "Tokenizer max_length support: Not Supported",
+        "Tokenizer return_tensors support: Not Supported"
+    ],
+    "tokenizer_dict": {
+        "training": false,
+        "_parameters": {},
+        "_buffers": {},
+        "_non_persistent_buffers_set": "set()",
+        "_backward_pre_hooks": {},
+        "_backward_hooks": {},
+        "_is_full_backward_hook": null,
+        "_forward_hooks": {},
+        "_forward_hooks_with_kwargs": {},
+        "_forward_hooks_always_called": {},
+        "_forward_pre_hooks": {},
+        "_forward_pre_hooks_with_kwargs": {},
+        "_state_dict_hooks": {},
+        "_state_dict_pre_hooks": {},
+        "_load_state_dict_pre_hooks": {},
+        "_load_state_dict_post_hooks": {},
+        "_modules": {},
+        "tokenizer": "LlamaTokenizer(name_or_path='/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b', vocab_size=49954, model_max_length=1000000000000000019884624838656, is_fast=False, padding_side='right', truncation_side='right', special_tokens={'bos_token': '<s>', 'eos_token': '</s>', 'unk_token': '<unk>', 'pad_token': ' '}, clean_up_tokenization_spaces=False)"
+    }
+}

@@ -354,6 +354,10 @@ class InternVideo2_CLIP(nn.Module):
             # print(f'self.tokenizer.__call__: {self.tokenizer.__call__}') # <bound method Module._wrapped_call_impl of Tokenizer()>
             # print(f"Tokenizer type: {type(self.tokenizer)}") # <class 'models.backbones.internvideo2.internvideo2_clip_text.Tokenizer'>
             tokenizer_dict = vars(self.tokenizer).copy()
+            # TypeError: Object of type set is not JSON serializable
+            tokenizer_dict["_non_persistent_buffers_set"] = str(tokenizer_dict["_non_persistent_buffers_set"])
+            tokenizer_dict["tokenizer"] = str(tokenizer_dict["tokenizer"])
+
             support = [
                 f"Tokenizer padding support: {getattr(self.tokenizer, 'padding', 'Not Supported')}",
                 f"Tokenizer pad_token support: {getattr(self.tokenizer, 'pad_token', 'Not Supported')}",
@@ -369,13 +373,14 @@ class InternVideo2_CLIP(nn.Module):
 
             with open("tokenizer_attributes_llama.json", "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
-
-            text = self.tokenizer(
+                
+            text = ["summarize:" + item for item in text]
+            text = self.tokenizer.tokenizer(
                 text,
                 padding="max_length",
                 truncation=True,
                 max_length=self.config.max_txt_l,
-                return_tensors="pt", ).to(self.config.device)
+                return_tensors="pt", ).input_ids.to(self.config.device)
             _, tfeat = self.encode_text(text)
             tfeat = self.text_proj(tfeat)
             tfeat /= tfeat.norm(dim=-1, keepdim=True)
