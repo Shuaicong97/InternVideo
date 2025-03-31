@@ -13,6 +13,7 @@ from models.backbones.bert.tokenization_bert import BertTokenizer
 from models.backbones.internvideo2.pos_embed import interpolate_pos_embed_internvideo2_new
 from models.backbones.internvideo2 import InternVideo2, LLaMA, Tokenizer
 from models.criterions import VTC_VTM_Loss
+from transformers import LlamaTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +79,10 @@ def retrieve_text(frames,
 
     text_feats = [text_feat_d[t] for t in texts]
     text_feats_tensor = torch.cat(text_feats, 0)
+    # probs, idxs = vlm.predict_label(vid_feat, text_feats_tensor, top=topk)
 
-    probs, idxs = vlm.predict_label(vid_feat, text_feats_tensor, top=topk)
-
-    ret_texts = [texts[i] for i in idxs.long().numpy()[0].tolist()]
-    return ret_texts, probs.float().numpy()[0], text_feats_tensor, vid_feat
+    # ret_texts = [texts[i] for i in idxs.long().numpy()[0].tolist()]
+    return text_feats_tensor, vid_feat
 
 def setup_internvideo2(config: dict):
     if "bert" in config.model.text_encoder.get("name", ""):
@@ -351,35 +351,21 @@ class InternVideo2_CLIP(nn.Module):
                      text: str):
         """get the text features for the given text."""
         with torch.no_grad():
-            # print(f'self.tokenizer.__call__: {self.tokenizer.__call__}') # <bound method Module._wrapped_call_impl of Tokenizer()>
-            # print(f"Tokenizer type: {type(self.tokenizer)}") # <class 'models.backbones.internvideo2.internvideo2_clip_text.Tokenizer'>
-            tokenizer_dict = vars(self.tokenizer).copy()
-            support = [
-                f"Tokenizer padding support: {getattr(self.tokenizer, 'padding', 'Not Supported')}",
-                f"Tokenizer pad_token support: {getattr(self.tokenizer, 'pad_token', 'Not Supported')}",
-                f"Tokenizer truncation support: {getattr(self.tokenizer, 'truncation', 'Not Supported')}",
-                f"Tokenizer max_length support: {getattr(self.tokenizer, 'max_length', 'Not Supported')}",
-                f"Tokenizer return_tensors support: {getattr(self.tokenizer, 'return_tensors', 'Not Supported')}"
-            ]
-
-            data = {
-                "supports": support,
-                "tokenizer_dict": tokenizer_dict,
-            }
-
-            with open("tokenizer_attributes_llama.json", "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-
+            text = [item for item in text]
+            print(f'text: {text}, {len(text)}') # text: Woman wears a white top walking down the street., 48 - no[]
+            # ['M', 'a', 'n', ' ', 'i', 'n', ' ', 'b', 'a', 's', 'e', 'b', 'a', 'l', 'l', ' ', 'c', 'a', 'p', ' ', 'i', 's', ' ', 'r', 'i', 'd', 'i', 'n', 'g', ' ', 'i', 'n', ' ', 'a', ' ', 'c', 'a', 'r', ' ', 'a', 't', ' ', 'n', 'i', 'g', 'h', 't', '.']
             text = self.tokenizer(
                 text,
                 padding="max_length",
                 truncation=True,
                 max_length=self.config.max_txt_l,
-                return_tensors="pt", ).to(self.config.device)
-            _, tfeat = self.encode_text(text)
-            tfeat = self.text_proj(tfeat)
+                return_tensors="pt",
+            ).input_ids.to(self.config.device)
+            print("text:", type(text), text.shape) # input_ids.shape: torch.Size([1, 32]) # text: <class 'torch.Tensor'> torch.Size([45, 32]) - []
+            tfeat = self.encode_text(text)
+            # tfeat = self.text_proj(tfeat)
             tfeat /= tfeat.norm(dim=-1, keepdim=True)
-            # print('tfeat: ', type(tfeat), tfeat.shape) # tfeat:  <class 'torch.Tensor'> torch.Size([1, 512])
+            print('tfeat: ', type(tfeat), tfeat.shape) # tfeat:  <class 'torch.Tensor'> torch.Size([1, 4096]) -> [45, 4096]
         return tfeat
 
     def predict_label(self,

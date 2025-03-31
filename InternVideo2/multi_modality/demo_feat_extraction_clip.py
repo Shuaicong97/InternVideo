@@ -11,16 +11,16 @@ from demo.utils_clip import (retrieve_text, _frame_from_video, setup_internvideo
 video = cv2.VideoCapture('demo/example1.mp4')
 frames = [x for x in _frame_from_video(video)]
 
-text_candidates = ["A playful dog and its owner wrestle in the snowy yard, chasing each other with joyous abandon.",
-                   "A man in a gray coat walks through the snowy landscape, pulling a sleigh loaded with toys.",
-                   "A person dressed in a blue jacket shovels the snow-covered pavement outside their house.",
-                   "A pet dog excitedly runs through the snowy yard, chasing a toy thrown by its owner.",
-                   "A person stands on the snowy floor, pushing a sled loaded with blankets, preparing for a fun-filled ride.",
-                   "A man in a gray hat and coat walks through the snowy yard, carefully navigating around the trees.",
-                   "A playful dog slides down a snowy hill, wagging its tail with delight.",
-                   "A person in a blue jacket walks their pet on a leash, enjoying a peaceful winter walk among the trees.",
-                   "A man in a gray sweater plays fetch with his dog in the snowy yard, throwing a toy and watching it run.",
-                   "A person bundled up in a blanket walks through the snowy landscape, enjoying the serene winter scenery."]
+text_candidates = ["Woman wears a white top walking down the street.",
+                   "Man in baseball cap is riding in a car at night.",
+                   "Girl sharing some street view during wlk",
+                   "Muslim woman is organizing clothes into bags.",
+                   "Chef peels an onion on a cutting board.",
+                   "A woman is introducing her family",
+                   "Two women are hanging out in a restaurant together.",
+                   "View as seen from the airplane window.",
+                   "man giving some financial advice  during walk",
+                   "Woman gives a monologue next to a potted plant."]
 
 # instead using stage2 config, here we need to use CLIP to get the features with right dimensions (clip, llama)
 config = Config.from_file('demo/internvideo2_clip_config.py')
@@ -28,6 +28,6 @@ config = eval_dict_leaf(config)
 
 intern_model, tokenizer = setup_internvideo2(config)
 
-texts, probs = retrieve_text(frames, text_candidates, model=intern_model, topk=5, config=config)
-for t, p in zip(texts, probs):
-    print(f'text: {t} ~ prob: {p:.4f}')
+text_feats_tensor, vid_feat = retrieve_text(frames, text_candidates, model=intern_model, topk=5, config=config)
+print(f'text_feats_tensor: {text_feats_tensor.shape}')
+print(f'vid_feat: {vid_feat.shape}')

@@ -41,20 +41,21 @@ class LLaMA(nn.Module):
             self.transformer = model.base_model.model.model
         
         self.transformer.gradient_checkpointing = True
-        self.text_projection = nn.Parameter(torch.empty(transformer_width, clip_embed_dim))
+        # The output vector is projected from [4096] to [768]
+        # self.text_projection = nn.Parameter(torch.empty(transformer_width, clip_embed_dim))
             
     def forward(self, text):
         text_key_padding_mask = text > 0
         
         x = self.transformer(input_ids=text, attention_mask=text_key_padding_mask).last_hidden_state
         x = x[torch.arange(x.shape[0]), text_key_padding_mask.sum(1) - 1]
-        x = x @ self.text_projection
+        # x = x @ self.text_projection
 
         return x
 
 
 class Tokenizer(nn.Module):
-    def __init__(self, tokenizer_path="your_model_path/chinese_alpaca_lora_7b"):
+    def __init__(self, tokenizer_path="/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b"):
         super(Tokenizer, self).__init__()
         self.tokenizer = LlamaTokenizer.from_pretrained(
             tokenizer_path, 
@@ -63,8 +64,11 @@ class Tokenizer(nn.Module):
         )
         self.tokenizer.pad_token = " "  # allow padding
         self.tokenizer.add_eos_token = True
-    
-    def forward(self, text):
-        text = ["summarize:" + item for item in text]
-        text = self.tokenizer(text, return_tensors="pt", max_length=80, truncation=True, padding="max_length").input_ids
-        return text
+
+    def __call__(self, text, **kwargs):
+        return self.tokenizer(text, **kwargs)
+
+    # def forward(self, text):
+    #     text = [item for item in text]
+    #     text = self.tokenizer(text, return_tensors="pt", max_length=80, truncation=True, padding="max_length").input_ids
+    #     return text

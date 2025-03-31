@@ -293,29 +293,6 @@ class InternVideo2_Stage2(nn.Module):
                      text: str):
         """get the text features for the given text."""
         with torch.no_grad():
-            # print(f'self.tokenizer.__call__: {self.tokenizer.__call__}')
-            tokenizer_dict = vars(self.tokenizer).copy()
-            # TypeError: Object of type BasicTokenizer is not JSON serializable
-            tokenizer_dict["tokens_trie"] = str(tokenizer_dict["tokens_trie"])
-            tokenizer_dict["basic_tokenizer"] = str(tokenizer_dict["basic_tokenizer"])
-            tokenizer_dict["wordpiece_tokenizer"] = str(tokenizer_dict["wordpiece_tokenizer"])
-            support = [
-                f"Tokenizer padding support: {getattr(self.tokenizer, 'padding', 'Not Supported')}",
-                f"Tokenizer pad_token support: {getattr(self.tokenizer, 'pad_token', 'Not Supported')}",
-                f"Tokenizer truncation support: {getattr(self.tokenizer, 'truncation', 'Not Supported')}",
-                f"Tokenizer max_length support: {getattr(self.tokenizer, 'max_length', 'Not Supported')}",
-                f"Tokenizer return_tensors support: {getattr(self.tokenizer, 'return_tensors', 'Not Supported')}"
-            ]
-
-            data = {
-                "supports": support,
-                "tokenizer_dict": tokenizer_dict,
-            }
-
-            with open("tokenizer_attributes_bert.json", "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-
-
             text = self.tokenizer(
                 text, 
                 padding="max_length", 
