@@ -66,15 +66,15 @@ class Tokenizer(nn.Module):
         # print(f'init: {self.tokenizer}')
         # init: LlamaTokenizer(name_or_path='/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b', vocab_size=49954, model_max_length=1000000000000000019884624838656, is_fast=False, padding_side='right', truncation_side='right', special_tokens={'bos_token': '<s>', 'eos_token': '</s>', 'unk_token': '<unk>', 'pad_token': ' '}, clean_up_tokenization_spaces=False)
 
-    def __call__(self, text, **kwargs):
-        return self.tokenizer(text, **kwargs)
+    # def __call__(self, text, **kwargs):
+    #     return self.tokenizer(text, **kwargs)
         
-    # def forward(self, text):
-    #     print(f'forward text before: {text}')
-    #     text = ["summarize:" + item for item in text]
-    #     text = self.tokenizer(text, return_tensors="pt", max_length=80, truncation=True, padding="max_length").input_ids
-    #     print(f'forward text: {text}')
-    #     return text
+    def forward(self, text):
+        print(f'forward text before: {text}')
+        text = ["summarize:" + item for item in text]
+        text = self.tokenizer(text, return_tensors="pt", max_length=32, truncation=True, padding="max_length").input_ids
+        print(f'forward text: {text}')
+        return text
     #     # encoding = self.tokenizer.batch_encode_plus(
     #     #     text,
     #     #     max_length=80,
