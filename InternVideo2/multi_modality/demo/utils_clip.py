@@ -62,7 +62,6 @@ def get_vid_feat(frames, vlm):
 def retrieve_text(frames,
                   texts,
                   model,
-                  topk: int = 5,
                   config: dict = {},
                   device=torch.device('cuda')):
     vlm = model
@@ -70,19 +69,26 @@ def retrieve_text(frames,
 
     fn = config.get('num_frames', 8)
     size_t = config.get('size_t', 224)
-    frames_tensor = frames2tensor(frames, fnum=fn, target_size=(size_t, size_t), device=device)
-    vid_feat = vlm.get_vid_feat(frames_tensor)
-    print('vfeat after vlm: ', type(vid_feat), vid_feat.shape)
+    # frames_tensor = frames2tensor(frames, fnum=fn, target_size=(size_t, size_t), device=device)
+    # vid_feat = vlm.get_vid_feat(frames_tensor)
+    # print('vfeat after vlm: ', type(vid_feat), vid_feat.shape)
 
     text_feat_d = {}
     text_feat_d = get_text_feat_dict(texts, vlm, text_feat_d)
 
     text_feats = [text_feat_d[t] for t in texts]
     text_feats_tensor = torch.cat(text_feats, 0)
+    lengths = [f.shape[0] for f in text_feats]
+
     # probs, idxs = vlm.predict_label(vid_feat, text_feats_tensor, top=topk)
 
     # ret_texts = [texts[i] for i in idxs.long().numpy()[0].tolist()]
-    return text_feats_tensor, vid_feat
+    packed_feats = {
+        "tensor": text_feats_tensor,
+        "lengths": lengths,
+        "texts": texts  # 可选：方便反查
+    }
+    return packed_feats
 
 def setup_internvideo2(config: dict):
     if "bert" in config.model.text_encoder.get("name", ""):
@@ -141,7 +147,6 @@ class InternVideo2_CLIP(nn.Module):
         # create modules.
         if tokenizer is None:
             self.tokenizer = Tokenizer(config.model.tokenizer_path)
-        print(f'after assign, self.tokenize is not None, {self.tokenizer}, self.tokenizer.__call__: {self.tokenizer.__call__}')
 
         self.vision_encoder = self.build_vision_encoder()
         self.text_encoder = self.build_text_encoder()
@@ -341,31 +346,27 @@ class InternVideo2_CLIP(nn.Module):
         """
         with torch.no_grad():
             vfeat = self.encode_vision(frames, test=True)
-            print('vfeat: ', vfeat.shape)
             vfeat /= vfeat.norm(dim=-1, keepdim=True)
-            print('vfeat after norm: ', vfeat.shape)
 
         return vfeat
 
     def get_txt_feat(self,
                      text: str):
         """get the text features for the given text."""
-        with torch.no_grad():
-            text = [item for item in text]
-            print(f'text: {text}, {len(text)}') # text: Woman wears a white top walking down the street., 48 - no[]
-            # ['M', 'a', 'n', ' ', 'i', 'n', ' ', 'b', 'a', 's', 'e', 'b', 'a', 'l', 'l', ' ', 'c', 'a', 'p', ' ', 'i', 's', ' ', 'r', 'i', 'd', 'i', 'n', 'g', ' ', 'i', 'n', ' ', 'a', ' ', 'c', 'a', 'r', ' ', 'a', 't', ' ', 'n', 'i', 'g', 'h', 't', '.']
-            text = self.tokenizer(
-                text,
+        with (torch.no_grad()):
+            tokens = self.get_tokens(text)
+            print(f'tokens: {tokens}, {len(tokens)}') # text: Woman wears a white top walking down the street., 48 - no[]
+            tokens = self.tokenizer(
+                tokens,
                 padding="max_length",
                 truncation=True,
                 max_length=self.config.max_txt_l,
                 return_tensors="pt",
             ).input_ids.to(self.config.device)
-            print("text:", type(text), text.shape) # input_ids.shape: torch.Size([1, 32]) # text: <class 'torch.Tensor'> torch.Size([45, 32]) - []
-            tfeat = self.encode_text(text)
+            tfeat = self.encode_text(tokens)
             # tfeat = self.text_proj(tfeat)
             tfeat /= tfeat.norm(dim=-1, keepdim=True)
-            print('tfeat: ', type(tfeat), tfeat.shape) # tfeat:  <class 'torch.Tensor'> torch.Size([1, 4096]) -> [45, 4096]
+            print('tfeat: ', tfeat.shape) # tfeat:  <class 'torch.Tensor'> torch.Size([1, 4096]) -> [7, 4096]
         return tfeat
 
     def predict_label(self,
@@ -375,3 +376,15 @@ class InternVideo2_CLIP(nn.Module):
         label_probs = (100.0 * vid_feat @ txt_feat.T).softmax(dim=-1)
         top_probs, top_labels = label_probs.float().cpu().topk(top, dim=-1)
         return top_probs, top_labels
+
+    def get_tokens(self, text):
+        tokenizer = LlamaTokenizer.from_pretrained(
+            "/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
+            local_files_only=True,
+            legacy=False)
+        tokenizer.pad_token = " "  # allow padding
+        tokenizer.add_eos_token = True
+
+        tokens = tokenizer.tokenize(text)
+        return  tokens
+
