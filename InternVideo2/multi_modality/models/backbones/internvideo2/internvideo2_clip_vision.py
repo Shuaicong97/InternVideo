@@ -12,8 +12,17 @@ from einops import rearrange
 
 from .pos_embed import get_3d_sincos_pos_embed, get_2d_sincos_pos_embed, get_1d_sincos_pos_embed
 from .flash_attention_class import FlashAttention
-from flash_attn.modules.mlp import FusedMLP
-from flash_attn.ops.rms_norm import DropoutAddRMSNorm
+logger = logging.getLogger(__name__)
+
+try:
+    from flash_attn.modules.mlp import FusedMLP
+except:
+    logger.warn(f'FusedMLP of flash_attn is not installed!!!')
+
+try:
+    from flash_attn.ops.rms_norm import DropoutAddRMSNorm
+except:
+    logger.warn(f'DropoutAddRMSNorm of flash_attn is not installed!!!')
 
 logger = logging.getLogger(__name__)
 
@@ -352,9 +361,9 @@ class InternVideo2(nn.Module):
             init_values: float = 1e-5, # may need ablation
             qk_normalization: bool = True,
             depth: int = 40,
-            use_flash_attn: bool = True,
-            use_fused_rmsnorm: bool = True,
-            use_fused_mlp: bool = True,
+            use_flash_attn: bool = False,
+            use_fused_rmsnorm: bool = False,
+            use_fused_mlp: bool = False,
             fused_mlp_heuristic: int = 1,
             attn_pool_num_heads: int = 16,
             clip_embed_dim: int = 768,
@@ -399,6 +408,7 @@ class InternVideo2(nn.Module):
         else:
             logger.info("Use joint position embedding")
             self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
+            print(f'num_patches: {num_patches}, embed_dim: {embed_dim}, self.pos_embed: {self.pos_embed.shape}')
         
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
         # choose which layer to use checkpoint
@@ -458,7 +468,12 @@ class InternVideo2(nn.Module):
                 self.patch_embed.grid_size[0], # t_size
                 cls_token=True
             )
+            # get_3d_sincos_pos_embed para: 1408, 16, 8
+            print(f'get_3d_sincos_pos_embed para: {self.pos_embed.shape[-1]}, {self.patch_embed.grid_size[1]}, {self.patch_embed.grid_size[0]}')
+            print(f'pos_embed: {pos_embed.shape}') # pos_embed: (2049, 1408)
             self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+            print(f'self.pos_embed: {pos_embed.shape}') 
+
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -495,18 +510,36 @@ class InternVideo2(nn.Module):
         }
     
     def forward(self, x, use_image=False):
+        # 1 x.shape: torch.Size([1, 3, 16, 224, 224])
+        print(f'1 x.shape: {x.shape}')
         x = self.patch_embed(x.type(self.dtype))
+        # 2 x.shape: torch.Size([1, 16, 256, 1408])
+        print(f'2 x.shape: {x.shape}')
+
         B, T, L, C = x.shape  # T: temporal; L: spatial
         x = x.view([B, T * L, C])
+        # 3 x.shape: torch.Size([1, 4096, 1408])
+        print(f'3 x.shape: {x.shape}')
 
         # append cls token
         cls_tokens = self.cls_token.expand(B, -1, -1)
+        # 4 cls_tokens: torch.Size([1, 1, 1408])
+        print(f'4 cls_tokens: {cls_tokens.shape}')
         x = torch.cat((cls_tokens, x), dim=1)
+        # 4 x.shape: torch.Size([1, 4097, 1408])
+        print(f'4 x.shape: {x.shape}')
 
+
+        ######
+        # Config:
+        # sep_pos_embed=False
+        # use_image=False
+        ######
         # add pos_embed
         if self.sep_pos_embed:
             if use_image:
                 pos_embed = self.pos_embed_spatial
+                print(f'1 pos_embed in sep_pos_embed & use_image: {pos_embed.shape}')
             else:
                 pos_embed = self.pos_embed_spatial.repeat(
                     1, self.grid_size[0], 1
@@ -515,6 +548,8 @@ class InternVideo2(nn.Module):
                     self.grid_size[1] * self.grid_size[2],
                     dim=1,
                 )
+                print(f'1 pos_embed in sep_pos_embed & !use_image: {pos_embed.shape}')
+
             pos_embed = torch.cat(
                 [
                     self.pos_embed_cls.expand(pos_embed.shape[0], -1, -1),
@@ -522,14 +557,22 @@ class InternVideo2(nn.Module):
                 ],
                 1,
             )
+            print(f'2 pos_embed in sep_pos_embed: {pos_embed.shape}')
         else:
             if use_image:
                 cls_pos_embed = self.pos_embed[:, :1, :]
                 img_pos_embed = self.pos_embed[:, 1:, :].view(1, self.T, L, C).mean(dim=1)
                 pos_embed = torch.cat([cls_pos_embed, img_pos_embed], dim=1)
+                print(f'1 pos_embed in !sep_pos_embed & use_image: {pos_embed.shape}')
             else:
                 pos_embed = self.pos_embed
+                # 1 pos_embed in !sep_pos_embed & !use_image: torch.Size([1, 2049, 1408])
+                print(f'1 pos_embed in !sep_pos_embed & !use_image: {pos_embed.shape}')
 
+        # data = vr.get_batch(np.arange(0, 0 + 16)).numpy() -> x.shape: torch.Size([1, 4097, 1408]), pos_embed.shape: torch.Size([1, 2049, 1408])
+        # RuntimeError: The size of tensor a (4097) must match the size of tensor b (2049) at non-singleton dimension 1
+        # data = vr.get_batch(np.arange(0, 0 + 8)).numpy() -> x.shape: torch.Size([1, 2049, 1408]), pos_embed.shape: torch.Size([1, 2049, 1408])
+        print(f'x.shape: {x.shape}, pos_embed.shape: {pos_embed.shape}')
         x = x + pos_embed
 
         residual = None

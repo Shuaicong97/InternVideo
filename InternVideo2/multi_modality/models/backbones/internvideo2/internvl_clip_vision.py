@@ -1,4 +1,5 @@
 import os
+import logging
 import torch
 import torch.nn.functional as F
 from timm.models.layers import DropPath, to_2tuple
@@ -7,13 +8,22 @@ from torch import nn
 import torch.utils.checkpoint as checkpoint
 from functools import partial
 from einops import rearrange
+logger = logging.getLogger(__name__)
 
 try:
     from .flash_attention_class import FlashAttention
 except:
     from flash_attention_class import FlashAttention
-from flash_attn.modules.mlp import FusedMLP
-from flash_attn.ops.rms_norm import DropoutAddRMSNorm
+    
+try:
+    from flash_attn.modules.mlp import FusedMLP
+except:
+    logger.warn(f'FusedMLP of flash_attn is not installed!!!')
+
+try:
+    from flash_attn.ops.rms_norm import DropoutAddRMSNorm
+except:
+    logger.warn(f'DropoutAddRMSNorm of flash_attn is not installed!!!')
 
 
 MODEL_PATH = 'your_model_path/internvl'
