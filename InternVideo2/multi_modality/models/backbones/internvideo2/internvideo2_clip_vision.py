@@ -12,11 +12,19 @@ from einops import rearrange
 
 from .pos_embed import get_3d_sincos_pos_embed, get_2d_sincos_pos_embed, get_1d_sincos_pos_embed
 from .flash_attention_class import FlashAttention
-from flash_attn.modules.mlp import FusedMLP
-from flash_attn.ops.rms_norm import DropoutAddRMSNorm
-
 logger = logging.getLogger(__name__)
 
+try:
+    from flash_attn.modules.mlp import FusedMLP
+except:
+    logger.warn(f'FusedMLP of flash_attn is not installed!!!')
+
+try:
+    from flash_attn.ops.rms_norm import DropoutAddRMSNorm
+except:
+    logger.warn(f'DropoutAddRMSNorm of flash_attn is not installed!!!')
+
+logger = logging.getLogger(__name__)
 
 class CrossAttention(nn.Module):
     def __init__(
