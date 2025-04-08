@@ -107,19 +107,59 @@ def main(config):
     feature_list = []
     transform=test_transform_init()
 
-    video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/demo/example1.mp4"
-    vr = video_loader(video_path)
-    data = vr.get_batch(np.arange(0, 0 + 8)).numpy() # NxHxWx3, (8, 480, 640, 3)
-    data = np.transpose(data, (0, 3, 1, 2)) # (T, 1 or 3, H, W) where T=1 for image
-    frame = torch.from_numpy(data)
-    frame_q = transform(frame)
-    input_data = frame_q.unsqueeze(0).cuda()
-    print(input_data.shape) # torch.Size([1, 16, 3, 224, 224])
+    # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/demo/example1.mp4"
+    # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/70bcaf68.mp4" # 21s (10, 768)
+    video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/0b02886a.mp4" # 30s (15, 768)
 
-    with torch.no_grad():
-        feature = model.module.encode_vision(input_data)   # [B,T,C,H,W] -> [B,C,T,H,W], out [1, 768]
-        print(feature.shape)
-        feature_list.append(feature.float().cpu().numpy())
+    vr = video_loader(video_path)
+
+    fps = vr.get_avg_fps()   # 例如返回 1.0
+    total_frames = len(vr)
+    duration_sec = total_frames / fps
+    print(f"视频时长：{duration_sec:.2f}秒，总帧数：{total_frames}，帧率：{fps}")
+
+    clip_duration = 2  # 每个 clip 长度（单位：秒）
+    frames_per_clip = int(fps * clip_duration)
+    target_model_frames = 8                # 模型要求8帧输入
+    num_clips = int(duration_sec // clip_duration)
+    
+    feature_list = []
+
+    for i in range(num_clips):
+        start_frame = i * frames_per_clip
+        end_frame = start_frame + frames_per_clip
+        if end_frame > total_frames:
+            break  # 超出帧数了
+            
+        frame_indices = np.arange(start_frame, end_frame)  # 提取当前clip的帧
+        data = vr.get_batch(frame_indices).numpy()  # NxHxWx3
+        data = np.transpose(data, (0, 3, 1, 2))     # (T, 1 or 3, H, W) where T=1 for image
+        frame = torch.from_numpy(data)
+        frame_q = transform(frame)                 # 应该是返回 (T, 3, 224, 224)
+
+        # pad/repeat到 8 帧
+        if frame_q.shape[0] < target_model_frames:
+            repeats = target_model_frames // frame_q.shape[0]
+            pad = target_model_frames - repeats * frame_q.shape[0]
+            frame_q = frame_q.repeat(repeats, 1, 1, 1)
+            if pad > 0:
+                frame_q = torch.cat([frame_q, frame_q[:pad]], dim=0)
+        
+        input_data = frame_q.unsqueeze(0).cuda()   # (1, T, 3, 224, 224)
+
+        print(input_data.shape) # torch.Size([1, 8, 3, 224, 224])
+        with torch.no_grad():
+            feature = model.module.encode_vision(input_data)  # out: [1, 768]
+            print(feature.shape)
+            feature_list.append(feature.float().cpu().numpy())
+
+    # 拼接为 [video_length / 2, 768]
+    vid_feature = np.concatenate(feature_list, axis=0)
+    print(vid_feature.shape)
+    file_path = os.path.join('/root/projects/InternVideo/InternVideo2/multi_modality/video_extract', f"0b02886a.pt")
+    # torch.save(feat_cpu, file_path)
+    torch.save(torch.from_numpy(vid_feature), file_path)
+    print(f"Saved Feat to {file_path}, shape: {vid_feature.shape}")
 
     if is_main_process() and config.wandb.enable:
         run.finish()
