@@ -13,7 +13,7 @@ from torch.utils.data import ConcatDataset
 
 import os
 import sys
-sys.path.append('/root/projects/InternVideo/InternVideo2/multi_modality')
+sys.path.append('/home/stud/shuaicong/forkProject/InternVideo/InternVideo2/multi_modality')
 
 from dataset.serialize import local_broadcast_process_authkey
 from dataset import MetaLoader_rs, create_dataset, create_loader, create_sampler, create_stateful_sampler
@@ -107,9 +107,9 @@ def main(config):
     feature_list = []
     transform=test_transform_init()
 
-    # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/demo/example1.mp4"
+    video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/demo/example1.mp4"
     # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/70bcaf68.mp4" # 21s (10, 768)
-    video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/0b02886a.mp4" # 30s (15, 768)
+    # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/0b02886a.mp4" # 30s (15, 768)
 
     vr = video_loader(video_path)
 
@@ -156,10 +156,10 @@ def main(config):
     # 拼接为 [video_length / 2, 768]
     vid_feature = np.concatenate(feature_list, axis=0)
     print(vid_feature.shape)
-    file_path = os.path.join('/root/projects/InternVideo/InternVideo2/multi_modality/video_extract', f"0b02886a.pt")
-    # torch.save(feat_cpu, file_path)
-    torch.save(torch.from_numpy(vid_feature), file_path)
-    print(f"Saved Feat to {file_path}, shape: {vid_feature.shape}")
+    # file_path = os.path.join('/root/projects/InternVideo/InternVideo2/multi_modality/video_extract', f"0b02886a.pt")
+    # # torch.save(feat_cpu, file_path)
+    # torch.save(torch.from_numpy(vid_feature), file_path)
+    # print(f"Saved Feat to {file_path}, shape: {vid_feature.shape}")
 
     if is_main_process() and config.wandb.enable:
         run.finish()
