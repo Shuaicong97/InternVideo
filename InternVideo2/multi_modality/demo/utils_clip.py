@@ -379,7 +379,7 @@ class InternVideo2_CLIP(nn.Module):
 
     def get_tokens(self, text):
         tokenizer = LlamaTokenizer.from_pretrained(
-            "/home/stud/shuaicong/forkProject/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
+            "/root/projects/InternVL/clip_benchmark/clip_benchmark/models/internvl_c_pytorch/chinese_alpaca_lora_7b",
             local_files_only=True,
             legacy=False)
         tokenizer.pad_token = " "  # allow padding

@@ -11,7 +11,7 @@ from demo.utils_clip import (retrieve_text, _frame_from_video, setup_internvideo
 
 qid_query_pairs = {}
 
-with open("/home/stud/shuaicong/forkProjects/FlashVTG/data/ovis_val_release.jsonl", "r", encoding="utf-8") as f:
+with open("/root/autodl-tmp/jsonl/mot20_val_release.jsonl", "r", encoding="utf-8") as f:
     for line in f:
         data = json.loads(line.strip())
         qid = data.get("qid")
@@ -22,7 +22,7 @@ with open("/home/stud/shuaicong/forkProjects/FlashVTG/data/ovis_val_release.json
 
 query_list = list(qid_query_pairs.values())
 
-# print(len(query_list), query_list)
+print(f'length of query: {len(query_list)}')
 
 video = cv2.VideoCapture('demo/example1.mp4')
 frames = [x for x in _frame_from_video(video)]
@@ -31,7 +31,8 @@ text_candidates = ["A woman is introducing her family", "The rabbit leaps over a
                    "A dog chases a ball", "A cat sits on the sofa"]
 
 # instead using stage2 config, here we need to use CLIP to get the features with right dimensions (clip, llama)
-config = Config.from_file('demo/internvideo2_clip_config.py')
+# config = Config.from_file('demo/internvideo2_clip_config.py')
+config = Config.from_file('video_extract/clip_config.py')
 config = eval_dict_leaf(config)
 
 intern_model, tokenizer = setup_internvideo2(config)
@@ -40,7 +41,9 @@ packed_feats = retrieve_text(frames, query_list, model=intern_model, config=conf
 split_feats = torch.split(packed_feats["tensor"], packed_feats["lengths"], dim=0)
 for i, feat in enumerate(split_feats):
     feat_cpu = feat.cpu()
-    file_path = os.path.join('/nfs/data3/shuaicong/InternVideo2/outputs/ovis_features/ovis_llama_text_feature_val', f"qid{i + 5095}.pt")
+    dir_path = '/root/projects/InternVideo/InternVideo2/multi_modality/text_feature/mot20_llama_text_feature_final'
+    file_path = os.path.join(dir_path, f"qid{i + 810}.pt")
+    os.makedirs(dir_path, exist_ok=True)
     torch.save(feat_cpu, file_path)
     print(f"Saved Feat {i} to {file_path}, shape: {feat_cpu.shape}")
 
