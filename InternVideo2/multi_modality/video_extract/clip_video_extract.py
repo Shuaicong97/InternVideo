@@ -3,6 +3,7 @@ import datetime
 import logging
 import time
 from os.path import join
+from tqdm import tqdm
 
 import pandas as pd
 import torch
@@ -61,6 +62,56 @@ def test_transform_init():
     )
     return test_transform
 
+def extract_single_vision_feature(video_path, model):
+    # prepare data
+    video_loader = get_video_loader()
+    feature_list = []
+    transform=test_transform_init()
+
+    vr = video_loader(video_path)
+    fps = vr.get_avg_fps()   # 例如返回 1.0
+    total_frames = len(vr)
+    duration_sec = total_frames / fps
+    print(f"视频时长：{duration_sec:.2f}秒，总帧数：{total_frames}，帧率：{fps}")
+    clip_duration = 2  # 每个 clip 长度（单位：秒）
+    frames_per_clip = int(fps * clip_duration)
+    target_model_frames = 8                # 模型要求8帧输入
+    num_clips = int(duration_sec // clip_duration)
+    
+    for i in range(num_clips):
+        start_frame = i * frames_per_clip
+        end_frame = start_frame + frames_per_clip
+        if end_frame > total_frames:
+            break  # 超出帧数了
+            
+        frame_indices = np.arange(start_frame, end_frame)  # 提取当前clip的帧
+        data = vr.get_batch(frame_indices).numpy()  # NxHxWx3
+        data = np.transpose(data, (0, 3, 1, 2))     # (T, 1 or 3, H, W) where T=1 for image
+        frame = torch.from_numpy(data)
+        frame_q = transform(frame)                 # 应该是返回 (T, 3, 224, 224)
+
+        # pad/repeat到 8 帧
+        if frame_q.shape[0] < target_model_frames:
+            repeats = target_model_frames // frame_q.shape[0]
+            pad = target_model_frames - repeats * frame_q.shape[0]
+            frame_q = frame_q.repeat(repeats, 1, 1, 1)
+            if pad > 0:
+                frame_q = torch.cat([frame_q, frame_q[:pad]], dim=0)
+        
+        input_data = frame_q.unsqueeze(0).cuda()   # (1, T, 3, 224, 224)
+
+        # print(input_data.shape) # torch.Size([1, 8, 3, 224, 224])
+        with torch.no_grad():
+            feature = model.module.encode_vision(input_data)  # out: [1, 768]
+            feature_list.append(feature.float().cpu().numpy())
+
+    if feature_list:
+        # 拼接为 [video_length / 2, 768]
+        return np.concatenate(feature_list, axis=0)
+    else:
+        print(f"[Warning] No features extracted for {video_path}")
+        return None
+        
 def main(config):
 
     # get model
@@ -102,64 +153,35 @@ def main(config):
     else:
         data_type = torch.float16
     
-    # prepare data
-    video_loader = get_video_loader()
-    feature_list = []
-    transform=test_transform_init()
-
     # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/demo/example1.mp4"
-    # video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/70bcaf68.mp4" # 21s (10, 768)
-    video_path = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/0b02886a.mp4" # 30s (15, 768)
+    # 1. OVIS path /root/autodl-tmp/ovis_train_videos_533_V1 and /root/autodl-tmp/ovis_valid_videos_137_V1
+    # 2. MOT17 path /root/mot17
+    # 3. MOT20 path /root/mot20
+    video_dir = "/root/mot20"
+    output_dir = "/root/projects/InternVideo/InternVideo2/multi_modality/video_extract/mot20_vision_feature_final"
+    video_files = [f for f in os.listdir(video_dir) if f.endswith('.mp4')]
 
-    vr = video_loader(video_path)
+    if not os.path.exists(output_dir):
+        # Create the directory
+        os.makedirs(output_dir)
 
-    fps = vr.get_avg_fps()   # 例如返回 1.0
-    total_frames = len(vr)
-    duration_sec = total_frames / fps
-    print(f"视频时长：{duration_sec:.2f}秒，总帧数：{total_frames}，帧率：{fps}")
+    for video_file in tqdm(video_files, desc="Processing videos"):
+        video_path = os.path.join(video_dir, video_file)
+        video_name = os.path.splitext(video_file)[0]
+        save_path = os.path.join(output_dir, f"{video_name}.pt")
+        if os.path.exists(save_path):
+            tensor = torch.load(save_path)
+            if isinstance(tensor, torch.Tensor):
+                print(f"[Overwriting] {save_path} already exists. Old shape: {tensor.shape}")
 
-    clip_duration = 2  # 每个 clip 长度（单位：秒）
-    frames_per_clip = int(fps * clip_duration)
-    target_model_frames = 8                # 模型要求8帧输入
-    num_clips = int(duration_sec // clip_duration)
-    
-    feature_list = []
-
-    for i in range(num_clips):
-        start_frame = i * frames_per_clip
-        end_frame = start_frame + frames_per_clip
-        if end_frame > total_frames:
-            break  # 超出帧数了
+        # if os.path.exists(save_path):
+        #     print(f"[Skip] {save_path} already exists.")
+        #     continue
             
-        frame_indices = np.arange(start_frame, end_frame)  # 提取当前clip的帧
-        data = vr.get_batch(frame_indices).numpy()  # NxHxWx3
-        data = np.transpose(data, (0, 3, 1, 2))     # (T, 1 or 3, H, W) where T=1 for image
-        frame = torch.from_numpy(data)
-        frame_q = transform(frame)                 # 应该是返回 (T, 3, 224, 224)
-
-        # pad/repeat到 8 帧
-        if frame_q.shape[0] < target_model_frames:
-            repeats = target_model_frames // frame_q.shape[0]
-            pad = target_model_frames - repeats * frame_q.shape[0]
-            frame_q = frame_q.repeat(repeats, 1, 1, 1)
-            if pad > 0:
-                frame_q = torch.cat([frame_q, frame_q[:pad]], dim=0)
-        
-        input_data = frame_q.unsqueeze(0).cuda()   # (1, T, 3, 224, 224)
-
-        print(input_data.shape) # torch.Size([1, 8, 3, 224, 224])
-        with torch.no_grad():
-            feature = model.module.encode_vision(input_data)  # out: [1, 768]
-            print(feature.shape)
-            feature_list.append(feature.float().cpu().numpy())
-
-    # 拼接为 [video_length / 2, 768]
-    vid_feature = np.concatenate(feature_list, axis=0)
-    print(vid_feature.shape)
-    file_path = os.path.join('/root/projects/InternVideo/InternVideo2/multi_modality/video_extract', f"0b02886a.pt")
-    # torch.save(feat_cpu, file_path)
-    torch.save(torch.from_numpy(vid_feature), file_path)
-    print(f"Saved Feat to {file_path}, shape: {vid_feature.shape}")
+        feat = extract_single_vision_feature(video_path, model)
+        if feat is not None:
+            torch.save(torch.from_numpy(feat), save_path)
+            print(f"[Saved] Feature for {video_name} -> {save_path}, shape: {feat.shape}")
 
     if is_main_process() and config.wandb.enable:
         run.finish()
@@ -167,9 +189,6 @@ def main(config):
     # np.save(url, np.vstack(feature_list))
     # print(f'[{idx} / {num_videos}]: save feature on {url}')
     print("done")
-
-
-
 
 if __name__ == "__main__":
 

@@ -124,7 +124,7 @@ class InternVideo2_CLIP(nn.Module):
         T = image.shape[1]
         use_image = True if T == 1 else False
         image = image.permute(0, 2, 1, 3, 4) # [B,T,C,H,W] -> [B,C,T,H,W]
-        print(f'encode_vision. T: {T}, {use_image}, {image.shape}')
+
         vision_embeds = self.vision_encoder(image, use_image=use_image)
         return vision_embeds
 

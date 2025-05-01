@@ -137,7 +137,7 @@ seed = 42
 save_latest = False
 save_iter = 500
 auto_resume = True
-pretrained_path = ""  # path to pretrained model weights, for resume only?
+pretrained_path = "/root/autodl-tmp/InternVideo/hub/models--OpenGVLab--InternVideo2-CLIP-1B-224p-f8/snapshots/b8f9edd6cacdbede471fd2fa58439e0b97a6dc1b/1B_clip.pth"  # path to pretrained model weights, for resume only?
 
 deepspeed = dict(
     enable=True,
